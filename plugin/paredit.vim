@@ -1644,7 +1644,7 @@ function! PareditMoveRight()
     endif
 
     if adjust_space && line[c0] == " "
-      execute "noautocmd normal! lxh"
+      normal! lxh
       let c1 -= 1
     endif
     if opening && c0 > 1 && line[c0-2] =~ s:any_macro_prefix
