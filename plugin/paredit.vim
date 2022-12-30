@@ -1625,6 +1625,7 @@ function! PareditMoveRight()
         let opening = 1
     elseif line[c0-1] =~ b:any_closing_char
         let opening = 0
+        let adjust_space = line[c0 - 2] =~ b:any_opening_char ? 1 : 0
     else
         " Can move only delimiters
         return
@@ -1642,6 +1643,10 @@ function! PareditMoveRight()
         " Do not go after the last command prompt in the REPL buffer
         return
     endif
+    if adjust_space && line[c0] == " "
+      execute "noautocmd normal! lxh"
+    endif
+
     if opening && c0 > 1 && line[c0-2] =~ s:any_macro_prefix
         call s:MoveChar( l0, c0-1, l1, c1 )
         call s:MoveChar( l0, c0-1, l1, c1 + (l0 != l1) )
@@ -1669,6 +1674,7 @@ function! PareditMoveRight()
         execute "normal! a "
         normal! h
     endif
+
     call PareditReindentForm()
 endfunction
 
