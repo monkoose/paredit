@@ -1616,7 +1616,6 @@ endfunction
 function! PareditMoveRight()
     call s:FindParenNearby()
 
-    "TODO: move ')' in '() xxx' leaves space
     let line = getline( '.' )
     let l0 = line( '.' )
     let c0 =  col( '.' )
@@ -1643,10 +1642,11 @@ function! PareditMoveRight()
         " Do not go after the last command prompt in the REPL buffer
         return
     endif
+
     if adjust_space && line[c0] == " "
       execute "noautocmd normal! lxh"
+      let c1 -= 1
     endif
-
     if opening && c0 > 1 && line[c0-2] =~ s:any_macro_prefix
         call s:MoveChar( l0, c0-1, l1, c1 )
         call s:MoveChar( l0, c0-1, l1, c1 + (l0 != l1) )
