@@ -191,13 +191,13 @@ function! PareditMapKeys()
 
     if g:paredit_shortmaps
         " Shorter keymaps: old functionality of KEY is remapped to <Leader>KEY
-        call RepeatableNNoRemap('<', ':<C-U>call PareditMoveLeft()') 
-        call RepeatableNNoRemap('>', ':<C-U>call PareditMoveRight()') 
-        call RepeatableNNoRemap('O', ':<C-U>call PareditSplit()') 
-        call RepeatableNNoRemap('J', ':<C-U>call PareditJoin()') 
-        call RepeatableNNoRemap('W', ':<C-U>call PareditWrap("(",")")') 
+        call RepeatableNNoRemap('<', ':<C-U>call PareditMoveLeft()')
+        call RepeatableNNoRemap('>', ':<C-U>call PareditMoveRight()')
+        call RepeatableNNoRemap('O', ':<C-U>call PareditSplit()')
+        call RepeatableNNoRemap('J', ':<C-U>call PareditJoin()')
+        call RepeatableNNoRemap('W', ':<C-U>call PareditWrap("(",")")')
         vnoremap <buffer> <silent> W            :<C-U>call PareditWrapSelection('(',')')<CR>
-        call RepeatableNNoRemap('S', ':<C-U>call PareditSplice()') 
+        call RepeatableNNoRemap('S', ':<C-U>call PareditSplice()')
         execute 'nnoremap <buffer> <silent> ' . g:paredit_leader.'<  :<C-U>normal! <<CR>'
         execute 'nnoremap <buffer> <silent> ' . g:paredit_leader.'>  :<C-U>normal! ><CR>'
         execute 'nnoremap <buffer> <silent> ' . g:paredit_leader.'O  :<C-U>normal! O<CR>'
@@ -208,13 +208,13 @@ function! PareditMapKeys()
     else
         " Longer keymaps with <Leader> prefix
         nnoremap <buffer> <silent> S            V:<C-U>call PareditChange(visualmode(),1)<CR>
-        call RepeatableNNoRemap(g:paredit_leader . '<', ':<C-U>call PareditMoveLeft()') 
-        call RepeatableNNoRemap(g:paredit_leader . '>', ':<C-U>call PareditMoveRight()') 
-        call RepeatableNNoRemap(g:paredit_leader . 'O', ':<C-U>call PareditSplit()') 
-        call RepeatableNNoRemap(g:paredit_leader . 'J', ':<C-U>call PareditJoin()') 
-        call RepeatableNNoRemap(g:paredit_leader . 'W', ':<C-U>call PareditWrap("(",")")') 
+        call RepeatableNNoRemap(g:paredit_leader . '<', ':<C-U>call PareditMoveLeft()')
+        call RepeatableNNoRemap(g:paredit_leader . '>', ':<C-U>call PareditMoveRight()')
+        call RepeatableNNoRemap(g:paredit_leader . 'O', ':<C-U>call PareditSplit()')
+        call RepeatableNNoRemap(g:paredit_leader . 'J', ':<C-U>call PareditJoin()')
+        call RepeatableNNoRemap(g:paredit_leader . 'W', ':<C-U>call PareditWrap("(",")")')
         execute 'vnoremap <buffer> <silent> ' . g:paredit_leader.'W  :<C-U>call PareditWrapSelection("(",")")<CR>'
-        call RepeatableNNoRemap(g:paredit_leader . 'S', ':<C-U>call PareditSplice()') 
+        call RepeatableNNoRemap(g:paredit_leader . 'S', ':<C-U>call PareditSplice()')
     endif
 
     if !exists( 'g:slimv_loaded' )
@@ -390,7 +390,7 @@ function! PareditOpfunc( func, type, visualmode )
         let putreg = oldreg . getreg( regname )
         if a:func == 'd'
             " Register "0 is corrupted by the above 'y' command
-            call setreg( '0', save_0 ) 
+            call setreg( '0', save_0 )
         elseif a:visualmode && &selection == "inclusive" && len(getline("'>")) < col("'>") && len(putreg) > 0
             " Remove extra space added at the end of line when selection=inclusive, all, or onemore
             let putreg = putreg[:-2]
@@ -435,9 +435,9 @@ function! PareditOpfunc( func, type, visualmode )
     let &virtualedit = ve_save
     if a:func == 'd' && regname == '"'
         " Do not currupt the '"' register and hence the "0 register
-        call setreg( '1', putreg ) 
+        call setreg( '1', putreg )
     endif
-    call setreg( regname, putreg ) 
+    call setreg( regname, putreg )
 endfunction
 
 " Set delete mode also saving repeat count
@@ -528,7 +528,6 @@ function! PareditChangeSpec( cmd, dir )
             return
         endif
     endif
-    
     " Safe to use Vim's built-in change function
     call feedkeys( a:cmd, 'n')
 endfunction
@@ -559,9 +558,9 @@ function! PareditPut( cmd )
     endwhile
 
     " Store balanced text in put register and call the appropriate put command
-    call setreg( regname, putreg ) 
+    call setreg( regname, putreg )
     silent exe "normal! " . (v:count>1 ? v:count : '') . '"' . regname . a:cmd
-    call setreg( regname, reg_save ) 
+    call setreg( regname, reg_save )
 endfunction
 
 " Toggle paredit mode
@@ -641,7 +640,6 @@ function! s:InsideString( ... )
         let quotes = substitute( line, '[^"]', '', 'g' )
         return len(quotes) % 2
     endif
-    " VimClojure and vim-clojure-static define special syntax for regexps
     return s:SynIDMatch( s:inside_string_regex, l, c, 0 )
 endfunction
 
@@ -799,16 +797,12 @@ function! PareditFindOpening( open, close, select )
     let close = escape( a:close, '[]' )
     call searchpair( open, '', close, 'bW', 's:SkipExpr()' )
     if a:select
+        normal! v
         call searchpair( open, '', close, 'W', 's:SkipExpr()' )
-        let save_ve = &ve
-        set ve=all 
-        normal! lvh
-        let &ve = save_ve
-        call searchpair( open, '', close, 'bW', 's:SkipExpr()' )
-        if &selection == 'inclusive'
-            " Trim last character from the selection, it will be included anyway
-            normal! oho
+        if &selection != 'inclusive'
+            normal! l
         endif
+        normal! o
     endif
 endfunction
 
@@ -823,10 +817,10 @@ function! PareditFindClosing( open, close, select )
     let open  = escape( a:open , '[]' )
     let close = escape( a:close, '[]' )
     if a:select
-        let line = getline( '.' )
-        if line[col('.')-1] != a:open
-            normal! h
-        endif
+        "let line = getline( '.' )
+        "if line[col('.')-1] != a:open
+        "    normal! h
+        "endif
         call searchpair( open, '', close, 'W', 's:SkipExpr()' )
         call searchpair( open, '', close, 'bW', 's:SkipExpr()' )
         normal! v
@@ -856,11 +850,11 @@ function! PareditSmartJumpOpening( select )
     let bracket_score = bracket_line * 10000 + bracket_col
     let brace_score = brace_line * 10000 + brace_col
     if (brace_score > paren_score || paren_score == 0) && (brace_score > bracket_score || bracket_score == 0) && brace_score != 0
-	call PareditFindOpening('{','}', a:select)
+        call PareditFindOpening('{','}', a:select)
     elseif (bracket_score > paren_score || paren_score == 0) && bracket_score != 0
-	call PareditFindOpening('[',']', a:select)
+        call PareditFindOpening('[',']', a:select)
     else
-	call PareditFindOpening('(',')', a:select)
+        call PareditFindOpening('(',')', a:select)
     endif
 endfunction
 
@@ -875,11 +869,11 @@ function! PareditSmartJumpClosing( select )
     let bracket_score = bracket_line * 10000 + bracket_col
     let brace_score = brace_line * 10000 + brace_col
     if (brace_score < paren_score || paren_score == 0) && (brace_score < bracket_score || bracket_score == 0) && brace_score != 0
-	call PareditFindClosing('{','}', a:select)
+        call PareditFindClosing('{','}', a:select)
     elseif (bracket_score < paren_score || paren_score == 0) && bracket_score != 0
-	call PareditFindClosing('[',']', a:select)
+        call PareditFindClosing('[',']', a:select)
     else
-	call PareditFindClosing('(',')', a:select)
+        call PareditFindClosing('(',')', a:select)
     endif
 endfunction
 
@@ -888,7 +882,7 @@ function! PareditFindDefunBck()
     normal! m`
     let l = line( '.' )
     let matchb = max( [l-g:paredit_matchlines, 1] )
-    let oldpos = getpos( '.' ) 
+    let oldpos = getpos( '.' )
     let newpos = searchpairpos( '(', '', ')', 'brW', 's:SkipExpr()', matchb )
     if newpos[0] == 0
         " Already standing on a defun, find the end of the previous one
@@ -915,7 +909,7 @@ function! PareditFindDefunFwd()
     normal! m`
     let l = line( '.' )
     let matchf = min( [l+g:paredit_matchlines, line('$')] )
-    let oldpos = getpos( '.' ) 
+    let oldpos = getpos( '.' )
     call searchpair( '(', '', ')', 'brW', 's:SkipExpr()', matchf )
     normal! %
     let newpos = searchpos( '(', 'W' )
@@ -982,7 +976,7 @@ function! PareditInsertClosing( open, close )
         let retval = "\<C-Y>"
     endif
     let save_ve = &ve
-    set ve=all 
+    set ve=all
     let line = getline( '.' )
     let pos = col( '.' ) - 1
     if !g:paredit_mode || s:InsideComment() || s:InsideString() || !s:IsBalanced()
@@ -1011,7 +1005,7 @@ function! PareditInsertClosing( open, close )
             " Delete all empty lines above the cursor
             normal! ddk
         endwhile
-        let oldpos = getpos( '.' ) 
+        let oldpos = getpos( '.' )
         normal! j
         while getline('.') =~ '^\s*$'
             " Delete all empty lines below the cursor
@@ -1500,11 +1494,11 @@ function! s:MoveChar( l0, c0, l1, c1 )
         if a:c1 > a:c0
             let line = strpart( line, 0, a:c0-1 ) . strpart( line, a:c0, a:c1-a:c0-1 ) . c . strpart( line, a:c1-1 )
             call setline( a:l0, line )
-            call setpos( '.', [0, a:l1, a:c1-1, 0] ) 
+            call setpos( '.', [0, a:l1, a:c1-1, 0] )
         else
             let line = strpart( line, 0, a:c1-1 ) . c . strpart( line, a:c1-1, a:c0-a:c1 ) . strpart( line, a:c0 )
             call setline( a:l0, line )
-            call setpos( '.', [0, a:l1, a:c1, 0] ) 
+            call setpos( '.', [0, a:l1, a:c1, 0] )
         endif
     else
         " Move character to another line
@@ -1518,7 +1512,7 @@ function! s:MoveChar( l0, c0, l1, c1 )
         else
             let line1 = c . line1
             call setline( a:l1, line1 )
-            call setpos( '.', [0, a:l1, 1, 0] ) 
+            call setpos( '.', [0, a:l1, 1, 0] )
         endif
     endif
 endfunction
@@ -1536,7 +1530,7 @@ function! s:FindParenNearby()
         endif
     endif
 
-    " Skip macro prefix character    
+    " Skip macro prefix character
     let c0 =  col( '.' )
     if line[c0-1] =~ s:any_macro_prefix && line[c0] =~ b:any_opening_char
         normal! l
@@ -1819,7 +1813,7 @@ function! s:WrapSelection( open, close )
         let [l1, c1] = [ltmp, ctmp]
     endif
     let save_ve = &ve
-    set ve=all 
+    set ve=all
     call setpos( '.', [0, l0, c0, 0] )
     execute "normal! i" . a:open
     call setpos( '.', [0, l1, c1 + (l0 == l1), 0] )
