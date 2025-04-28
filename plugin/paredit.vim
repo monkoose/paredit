@@ -77,14 +77,49 @@ let s:repeat             = 0
 
 let s:yank_pos           = []
 
+let s:fts_list = []
+if !exists("g:paredit_disable_clojure")
+    call add(s:fts_list, 'clojure')
+    let s:enabled_clojure = 1
+else
+    let s:enabled_clojure = 0
+endif
+
+if !exists("g:paredit_disable_hy")
+    call add(s:fts_list, 'hy')
+endif
+
+if !exists("g:paredit_disable_scheme")
+    call add(s:fts_list, 'scheme\|racket')
+
+    " Filetypes with multiline comment #| ... |#
+    let s:fts_multiline_comment      = '.*\(scheme\|racket\).*'
+
+    " Filetypes with datum comment #;(...)
+    let s:fts_datum_comment          = '.*\(scheme\).*'
+    let s:enabled_scheme = 1
+else
+    let s:enabled_scheme = 0
+endif
+
+if !exists("g:paredit_disable_shen")
+    call add(s:fts_list, 'shen')
+endif
+
+if !exists("g:paredit_disable_lfe")
+    call add(s:fts_list, 'lfe')
+endif
+
+if !exists("g:paredit_disable_fennel")
+    call add(s:fts_list, 'fennel')
+endif
+
+if !exists("g:paredit_disable_janet")
+    call add(s:fts_list, 'janet')
+endif
 " Filetypes with [] and {} pairs balanced as well
-let s:fts_balancing_all_brackets = '.*\(clojure\|hy\|scheme\|racket\|shen\|lfe\|fennel\|janet\).*'
-
-" Filetypes with multiline comment #| ... |#
-let s:fts_multiline_comment      = '.*\(scheme\|racket\).*'
-
-" Filetypes with datum comment #;(...)
-let s:fts_datum_comment          = '.*\(scheme\).*'
+let s:fts_balancing_all_brackets = '.*\%(' .. join(s:fts_list, '\|') .. '\).*'
+unlet! s:fts_list
 
 " =====================================================================
 "  General utility functions
@@ -548,11 +583,16 @@ function! s:SynIDMatch( regexp, line, col, match_eol )
     return synIDattr( synID( a:line, col, 0), 'name' ) =~ a:regexp
 endfunction
 
+if s:enabled_clojure
+    let s:skip_expr_regex = "[Ss]tring\\|[Cc]omment\\|clojureRegexp\\|clojurePattern"
+else
+    let s:skip_expr_regex = "[Ss]tring\\|[Cc]omment"
+endif
 " Expression used to check whether we should skip a match with searchpair()
 function! s:SkipExpr()
     let l = line('.')
     let c = col('.')
-    if synIDattr(synID(l, c, 0), "name") =~ "[Ss]tring\\|[Cc]omment\\|clojureRegexp\\|clojurePattern"
+    if synIDattr(synID(l, c, 0), "name") =~ s:skip_expr_regex
         " Skip parens inside strings, comments
         return 1
     endif
@@ -575,7 +615,7 @@ function! s:InsideComment( ... )
         let line = substitute( line, '"[^"]*"', '', 'g' )
         return match( line, ';' ) >= 0
     endif
-    if s:SynIDMatch( 'clojureComment', l, c, 1 )
+    if s:enabled_clojure && s:SynIDMatch( 'clojureComment', l, c, 1 )
         if strpart( getline(l), c-1, 2 ) == '#_' || strpart( getline(l), c-2, 2 ) == '#_'
             " This is a commented out clojure form of type #_(...), treat it as regular form
             return 0
@@ -584,6 +624,11 @@ function! s:InsideComment( ... )
     return s:SynIDMatch( '[Cc]omment', l, c, 1 )
 endfunction
 
+if s:enabled_clojure
+    let s:inside_string_regex = '[Ss]tring\|clojureRegexp\|clojurePattern'
+else
+    let s:inside_string_regex = '[Ss]tring'
+endif
 " Is the current cursor position inside a string?
 function! s:InsideString( ... )
     let l = a:0 ? a:1 : line('.')
@@ -597,35 +642,7 @@ function! s:InsideString( ... )
         return len(quotes) % 2
     endif
     " VimClojure and vim-clojure-static define special syntax for regexps
-    return s:SynIDMatch( '[Ss]tring\|clojureRegexp\|clojurePattern', l, c, 0 )
-endfunction
-
-" Is this a Slimv or VimClojure REPL buffer?
-function! s:IsReplBuffer()
-    if exists( 'b:slimv_repl_buffer' ) || exists( 'b:vimclojure_repl' )
-        return 1
-    else
-        return 0
-    endif
-endfunction
-
-" Get Slimv or VimClojure REPL buffer last command prompt position
-" Return [0, 0] if this is not the REPL buffer
-function! s:GetReplPromptPos()
-    if !s:IsReplBuffer()
-        return [0, 0]
-    endif
-    if exists( 'b:vimclojure_repl')
-        let cur_pos = getpos( '.' )
-        call cursor( line( '$' ), 1)
-        call cursor( line( '.' ), col( '$') )
-        call search( b:vimclojure_namespace . '=>', 'bcW' )
-        let target_pos = getpos( '.' )[1:2]
-        call setpos( '.', cur_pos )
-        return target_pos
-    else
-        return [ b:repl_prompt_line, b:repl_prompt_col ]
-    endif
+    return s:SynIDMatch( s:inside_string_regex, l, c, 0 )
 endfunction
 
 " Is the current top level form balanced, i.e all opening delimiters
@@ -639,11 +656,6 @@ function! s:IsBalanced()
     endif
     let matchb = max( [l-g:paredit_matchlines, 1] )
     let matchf = min( [l+g:paredit_matchlines, line('$')] )
-    let [prompt, cp] = s:GetReplPromptPos()
-    if s:IsReplBuffer() && l >= prompt && matchb < prompt
-        " Do not go before the last command prompt in the REPL buffer
-        let matchb = prompt
-    endif
     if line[c-1] == '('
         let p1 = searchpair( '(', '', ')', 'brnmWc', 's:SkipExpr()', matchb )
         let p2 = searchpair( '(', '', ')',  'rnmW' , 's:SkipExpr()', matchf )
@@ -731,14 +743,18 @@ function! s:GetMatchedChars( lines, start_in_string, start_in_comment )
             endif
             if a:lines[i] == ';'
                 let inside_comment = 1
-                if &ft =~ s:fts_datum_comment && i > 0 && a:lines[i-1] == '#'
-                    " Datum comment: pretend that we are not inside comment
-                    let inside_comment = 0
+                if s:enabled_scheme
+                    if &ft =~ s:fts_datum_comment && i > 0 && a:lines[i-1] == '#'
+                        " Datum comment: pretend that we are not inside comment
+                        let inside_comment = 0
+                    endif
                 endif
             endif
-            if &ft =~ s:fts_multiline_comment && a:lines[i] == "|" && i > 0 && a:lines[i-1] == '#'
-                let inside_comment = 1
-                let multiline_comment = multiline_comment + 1
+            if s:enabled_scheme
+                if &ft =~ s:fts_multiline_comment && a:lines[i] == "|" && i > 0 && a:lines[i-1] == '#'
+                    let inside_comment = 1
+                    let multiline_comment = multiline_comment + 1
+                endif
             endif
             if a:lines[i] =~ b:any_openclose_char
                 let matched = strpart( matched, 0, i ) . a:lines[i] . strpart( matched, i+1 )
@@ -1078,18 +1094,7 @@ function! PareditEnter()
 endfunction
 
 " Handle <BS> keypress
-function! PareditBackspace( repl_mode )
-    let [lp, cp] = s:GetReplPromptPos()
-    if a:repl_mode && line( "." ) == lp && col( "." ) <= cp
-        if col( "." ) == cp
-            return "\<BS> "
-        else
-            " No BS allowed before the previous EOF mark in the REPL
-            " i.e. don't delete Lisp prompt
-            return ""
-        endif
-    endif
-
+function! PareditBackspace()
     if !g:paredit_mode || s:InsideComment()
         return "\<BS>"
     endif
@@ -1570,16 +1575,12 @@ function! PareditMoveLeft()
         return
     endif
 
-    let [lp, cp] = s:GetReplPromptPos()
     let ve_save = &virtualedit
     set virtualedit=all
     let [l1, c1] = s:PrevElement( closing )
     let &virtualedit = ve_save
     if [l1, c1] == [0, 0]
         " No previous element found
-        return
-    elseif [lp, cp] != [0, 0] && l0 >= lp && (l1 < lp || (l1 == lp && c1 < cp))
-        " Do not go before the last command prompt in the REPL buffer
         return
     endif
     if !closing && c0 > 0 && line[c0-2] =~ s:any_macro_prefix
@@ -1630,16 +1631,12 @@ function! PareditMoveRight()
         return
     endif
 
-    let [lp, cp] = s:GetReplPromptPos()
     let ve_save = &virtualedit
     set virtualedit=all
     let [l1, c1] = s:NextElement( opening )
     let &virtualedit = ve_save
     if [l1, c1] == [0, 0]
         " No next element found
-        return
-    elseif [lp, cp] != [0, 0] && l0 < lp && l1 >= lp
-        " Do not go after the last command prompt in the REPL buffer
         return
     endif
 
@@ -1973,7 +1970,7 @@ if !exists("g:paredit_disable_lisp")
     au FileType lisp      call PareditInitBuffer()
 endif
 
-if !exists("g:paredit_disable_clojure")
+if s:enabled_clojure
     au FileType *clojure* call PareditInitBuffer()
 endif
 
@@ -1981,7 +1978,7 @@ if !exists("g:paredit_disable_hy")
     au FileType hy        call PareditInitBuffer()
 endif
 
-if !exists("g:paredit_disable_scheme")
+if s:enabled_scheme
     au FileType scheme    call PareditInitBuffer()
     au FileType racket    call PareditInitBuffer()
 endif
