@@ -1541,16 +1541,6 @@ function! s:FindParenNearby()
     endif
 endfunction
 
-" Reindent current form
-function! PareditReindentForm()
-    let l = line('.')
-    let c = col('.')
-    let old_indent = len(matchstr(getline(l), '^\s*'))
-    normal! =ib
-    let new_indent = len(matchstr(getline(l), '^\s*'))
-    call cursor( l, c + new_indent - old_indent )
-endfunction
-
 " Move delimiter one atom or s-expression to the left
 function! PareditMoveLeft()
     call s:FindParenNearby()
@@ -1603,7 +1593,7 @@ function! PareditMoveLeft()
             normal! l
         endif
     endif
-    call PareditReindentForm()
+    call v:lua.require'paredit'.reindent_form(l0)
 endfunction
 
 " Move delimiter one atom or s-expression to the right
@@ -1613,6 +1603,7 @@ function! PareditMoveRight()
     let line = getline( '.' )
     let l0 = line( '.' )
     let c0 =  col( '.' )
+    let adjust_space = v:false
 
     if line[c0-1] =~ b:any_opening_char
         let opening = 1
@@ -1665,7 +1656,7 @@ function! PareditMoveRight()
         normal! h
     endif
 
-    call PareditReindentForm()
+    call v:lua.require'paredit'.reindent_form()
 endfunction
 
 " Find closing of the innermost structure: (...) or [...] or {...}
