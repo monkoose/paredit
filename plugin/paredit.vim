@@ -907,9 +907,8 @@ endfunction
 " Find defun start forward
 function! PareditFindDefunFwd()
     normal! m`
-    let l = line( '.' )
-    let matchf = min( [l+g:paredit_matchlines, line('$')] )
     let oldpos = getpos( '.' )
+    let matchf = min( [oldpos[1]+g:paredit_matchlines, line('$')] )
     call searchpair( '(', '', ')', 'brW', 's:SkipExpr()', matchf )
     normal! %
     let newpos = searchpos( '(', 'W' )
